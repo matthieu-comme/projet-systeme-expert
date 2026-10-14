@@ -31,7 +31,9 @@ NAGE = "nage"
 PINGOUIN = "pingouin"
 VOLE_BIEN = "vole bien"
 ALBATROS = "albatros"
+NON = "non"
 
+### CHAINAGE AVANT
 
 with ruleset("animal"):
 
@@ -135,5 +137,68 @@ with ruleset("animal"):
 
 
 assert_fact("animal", {"subject": POILS})
+assert_fact("animal", {"subject": SABOTS})
+
 facts = get_facts("animal")
-print(facts)
+# print(facts)
+
+
+### CHAINAGE ARRIERE
+
+# conclusion: [cond1], [cond2, cond3],...
+# pour avoir conclusion, il faut cond1 OU (cond2 ET cond3) OU ...
+regles = {
+    # R1 & R2
+    MAMMIFERE: [[POILS], [LAIT]],
+    # R3 & R4
+    OISEAU: [[PLUMES], [VOLE, OEUFS]],
+    # R5 & R6
+    CARNIVORE: [[MANGE_VIANDE], [DENTS_POINTUES, GRIFFES, YEUX_DEVANT]],
+    # R7 & R8
+    ONGULE: [[MAMMIFERE, SABOTS], [MAMMIFERE, RUMINE]],
+    # R9
+    GUEPARD: [[MAMMIFERE, CARNIVORE, BRUNE, TACHES_SOMBRES]],
+    # R10
+    TIGRE: [[MAMMIFERE, CARNIVORE, BRUNE, RAIES_NOIRES]],
+    # R11
+    GIRAFE: [[ONGULE, LONG_COU, LONGUES_PATTES, TACHES_SOMBRES]],
+    # R12
+    ZEBRE: [[ONGULE, RAIES_NOIRES]],
+    # R13
+    AUTRUCHE: [[OISEAU, (NON, VOLE), LONG_COU, LONGUES_PATTES, NOIR_BLANC]],
+    # R14
+    PINGOUIN: [[OISEAU, (NON, VOLE), NAGE, NOIR_BLANC]],
+    # R15
+    ALBATROS: [[OISEAU, VOLE_BIEN]],
+}
+
+
+def chainage_arriere(faits: set, regles: dict, buts: set) -> set:
+    p = list(buts)
+    while p:
+        f = p.pop()
+        if f not in faits:
+            s = regles.get(f, [])
+            if s:
+                for a in s:
+                    valide = True
+                    for premisse in a:
+                        if premisse not in faits:
+                            chainage_arriere(faits, regles, [premisse])
+                            if premisse not in faits:
+                                valide = False
+                                break
+                    if valide:
+                        faits.add(f)
+                        break
+
+    return faits
+
+
+base_faits = {POILS, SABOTS, RAIES_NOIRES}
+but = {AUTRUCHE}
+
+chainage_arriere(base_faits, regles, but)
+result = but.issubset(base_faits)
+print(f"But {but} atteignable :", result)
+print("Base de faits finale :", base_faits)
