@@ -1,6 +1,14 @@
 from durable.lang import *
 
 
+class Node:
+    def __init__(self, name, node_type="OU", success=False):
+        self.name: str = name
+        self.node_type: str = node_type
+        self.success: bool = success
+        self.children: list = []
+
+
 POILS = "a des poils"
 MAMMIFERE = "mammifere"
 LAIT = "donne du lait"
@@ -32,6 +40,8 @@ PINGOUIN = "pingouin"
 VOLE_BIEN = "vole bien"
 ALBATROS = "albatros"
 NON = "non"
+OU = "ou"
+ET = "et"
 
 ### CHAINAGE AVANT
 
@@ -173,32 +183,45 @@ regles = {
 }
 
 
-def chainage_arriere(faits: set, regles: dict, buts: set) -> set:
+def chainage_arriere(faits: set, regles: dict, buts: set, parent_node=None) -> tuple:
     p = list(buts)
+    racines = []
+
     while p:
         f = p.pop()
+        f_node = Node(f, OU, (f in faits))
+        if parent_node:
+            parent_node.children.append(f_node)
+        racines.append(f_node)
+
         if f not in faits:
             s = regles.get(f, [])
             if s:
                 for a in s:
+                    a_node = Node(name=f"Regle {a}", node_type=ET)
+                    f_node.children.append(a_node)
+
                     valide = True
                     for premisse in a:
                         if premisse not in faits:
-                            chainage_arriere(faits, regles, [premisse])
+                            chainage_arriere(faits, regles, [premisse], a_node)
                             if premisse not in faits:
                                 valide = False
                                 break
                     if valide:
                         faits.add(f)
+                        f_node.success = True
+                        a_node.success = True
                         break
 
-    return faits
+    return faits, racines
 
 
-base_faits = {POILS, SABOTS, RAIES_NOIRES}
-but = {AUTRUCHE}
+if __name__ == "__main__":
+    base_faits = {POILS, SABOTS, RAIES_NOIRES}
+    but = {AUTRUCHE}
 
-chainage_arriere(base_faits, regles, but)
-result = but.issubset(base_faits)
-print(f"But {but} atteignable :", result)
-print("Base de faits finale :", base_faits)
+    faits_finaux, arbre = chainage_arriere(base_faits, regles, but)
+    result = but.issubset(faits_finaux)
+    print(f"But {but} atteignable :", result)
+    print("Base de faits finale :", faits_finaux)
